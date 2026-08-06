@@ -72,7 +72,8 @@ if is_readonly:
         </style>
     """, unsafe_allow_html=True)
     st.info("👁️ **Zuschauer-Modus:** Ergebnisse werden live angezeigt. Bearbeitung ist deaktiviert.")
-    st.markdown("<a href='tische?view=readonly' target='_self'>👉 <b>📺 Zum Live-Tisch-Dashboard wechseln</b></a>", unsafe_allow_html=True)
+    st.markdown("<a href='tische?view=readonly' target='_self'>👉 <b>📺 Zum Live-Tisch-Dashboard wechseln</b></a>",
+                unsafe_allow_html=True)
 
 daten = lade_daten()
 is_locked = daten.get("turnier_gestartet", False)
@@ -95,8 +96,30 @@ if not is_readonly:
                                 daten["matches_einzel"][g_name][idx][3] = 0
                             st.session_state[f"e_s1_{g_name}_{idx}"] = 3
                             st.session_state[f"e_s2_{g_name}_{idx}"] = 0
-                speichere_daten(daten)
+                    speichere_daten(daten)
+                    st.rerun()
+
+        # --- NEUES BACKUP-SYSTEM ---
+        st.markdown("---")
+        st.header("💾 Backup & Restore")
+
+        json_string = json.dumps(daten, indent=4)
+        st.download_button(
+            label="📥 Aktuellen Stand herunterladen",
+            data=json_string,
+            file_name="turnier_backup.json",
+            mime="application/json"
+        )
+
+        uploaded_file = st.file_uploader("📤 Backup wiederherstellen", type="json")
+        if uploaded_file is not None:
+            if st.button("⚠️ Backup jetzt laden (Überschreibt alles!)"):
+                neue_daten = json.load(uploaded_file)
+                speichere_daten(neue_daten)
+                st.success("Backup erfolgreich geladen!")
+                time.sleep(1)
                 st.rerun()
+        # -----------------------------
 
 st.title("🏓 Tischtennis Vereinsmeisterschaft")
 
@@ -121,18 +144,18 @@ with tab1:
                     for i in range(1, 11): daten["spieler"][f"Spieler {i}"] = {"einzel": True, "doppel": True,
                                                                                "kopf": (i <= 2),
                                                                                "staerke": "stark" if i <= 5 else "schwach"}
-                    speichere_daten(daten);
+                    speichere_daten(daten)
                     st.rerun()
                 elif neuer_spieler == "TEST18":
                     for i in range(1, 19): daten["spieler"][f"Spieler {i}"] = {"einzel": True, "doppel": True,
                                                                                "kopf": (i <= 4),
                                                                                "staerke": "stark" if i <= 9 else "schwach"}
-                    speichere_daten(daten);
+                    speichere_daten(daten)
                     st.rerun()
                 elif neuer_spieler not in daten["spieler"]:
                     daten["spieler"][neuer_spieler] = {"einzel": True, "doppel": True, "kopf": False,
                                                        "staerke": "stark"}
-                    speichere_daten(daten);
+                    speichere_daten(daten)
                     st.rerun()
 
         st.write(f"**Registriert ({len(daten['spieler'])}):**")
@@ -148,8 +171,8 @@ with tab1:
                 info["kopf"] = st.checkbox("K", value=info["kopf"], key=f"k_{name}")
             with col5:
                 if st.button("❌", key=f"del_{name}"):
-                    del daten["spieler"][name];
-                    speichere_daten(daten);
+                    del daten["spieler"][name]
+                    speichere_daten(daten)
                     st.rerun()
         speichere_daten(daten)
 
@@ -181,16 +204,16 @@ with tab2:
                     c_name, c_btn = st.columns([4, 1])
                     c_name.write(name)
                     if c_btn.button("➡️", key=f"r_{name}"):
-                        daten["spieler"][name]["staerke"] = "schwach";
-                        speichere_daten(daten);
+                        daten["spieler"][name]["staerke"] = "schwach"
+                        speichere_daten(daten)
                         st.rerun()
             with col_rechts:
                 st.markdown("### 🐣 Schwach")
                 for name in schwache:
                     c_btn, c_name = st.columns([1, 4])
                     if c_btn.button("⬅️", key=f"l_{name}"):
-                        daten["spieler"][name]["staerke"] = "stark";
-                        speichere_daten(daten);
+                        daten["spieler"][name]["staerke"] = "stark"
+                        speichere_daten(daten)
                         st.rerun()
                     c_name.write(name)
 
@@ -202,8 +225,8 @@ with tab2:
                     random.shuffle(starke);
                     random.shuffle(schwache)
                     daten["doppel"] = [f"{starke.pop()} & {schwache.pop()}" for _ in range(len(starke))]
-                    speichere_daten(daten);
-                    st.balloons();
+                    speichere_daten(daten)
+                    st.balloons()
                     st.rerun()
 
             if daten.get("doppel"):
@@ -263,7 +286,7 @@ with tab3:
                         daten["ko_doppel"] = {"phase": 1, "baum_typ": baum_typ, "w1": w1_matches}
                         daten["use_bo7_final"] = use_bo7_final
                         daten["turnier_gestartet"] = True
-                        speichere_daten(daten);
+                        speichere_daten(daten)
                         st.rerun()
     else:
         einzel_fertig = False
@@ -286,16 +309,20 @@ with tab3:
 
         tabs = st.tabs(tab_list)
         t_einzel = tabs[0];
-        t_doppel = tabs[1];
+        t_doppel = tabs[1]
         t_sieger = tabs[2] if (einzel_fertig or doppel_fertig) else None
 
         # ==========================================
         # EINZEL LOGIK
         # ==========================================
         with t_einzel:
-            if not daten.get("gruppen_beendet"):
+            grp_beendet = daten.get("gruppen_beendet", False)
+
+            # --- GRUPPENPHASE IMMER SICHTBAR (ABER EINKLAPPBAR) ---
+            with st.expander("📊 Gruppenphase (Details ausklappen)", expanded=(not grp_beendet)):
                 alle_spiele_gueltig = True
                 gruppen_ergebnisse = {}
+                grp_ui_disabled = ui_disabled or (grp_beendet and not dev_mode)
 
                 for g_name, matches in daten["matches_einzel"].items():
                     with st.expander(f"Gruppe {g_name}", expanded=True):
@@ -325,7 +352,7 @@ with tab3:
                         c_platz, c_name, c_spiele, c_siege, c_diff, c_status = st.columns([1, 4, 2, 2, 2, 2])
                         c_platz.write("**#**");
                         c_name.write("**Spieler**");
-                        c_spiele.write("**Spiele**");
+                        c_spiele.write("**Spiele**")
                         c_siege.write("**Siege**");
                         c_diff.write("**Diff**");
                         c_status.write("**Status**")
@@ -335,7 +362,7 @@ with tab3:
                             c_platz, c_name, c_spiele, c_siege, c_diff, c_status = st.columns([1, 4, 2, 2, 2, 2])
                             c_platz.write(f"{idx + 1}.");
                             c_name.write(spieler);
-                            c_spiele.write(str(data["spiele"]));
+                            c_spiele.write(str(data["spiele"]))
                             c_siege.write(str(data["wins"]));
                             c_diff.write(f"{data['diff']:+d}")
                             if idx < 2:
@@ -355,25 +382,27 @@ with tab3:
 
                             c1, c2, c3, c4, c5 = st.columns([3, 1, 1, 1, 3])
                             c1.write(f"**{p1_disp}**")
-                            new_s1 = c2.number_input("Satz", min_value=0, max_value=5, value=s1, key=f"e_s1_{g_name}_{idx}",
-                                                     label_visibility="collapsed", disabled=ui_disabled)
+                            new_s1 = c2.number_input("Satz", min_value=0, max_value=5, value=s1,
+                                                     key=f"e_s1_{g_name}_{idx}", label_visibility="collapsed",
+                                                     disabled=grp_ui_disabled)
                             c3.markdown("<div style='text-align: center; font-weight: bold;'>:</div>",
                                         unsafe_allow_html=True)
-                            new_s2 = c4.number_input("Satz", min_value=0, max_value=5, value=s2, key=f"e_s2_{g_name}_{idx}",
-                                                     label_visibility="collapsed", disabled=ui_disabled)
+                            new_s2 = c4.number_input("Satz", min_value=0, max_value=5, value=s2,
+                                                     key=f"e_s2_{g_name}_{idx}", label_visibility="collapsed",
+                                                     disabled=grp_ui_disabled)
                             c5.write(f"**{p2_disp}**")
 
                             if new_s1 != s1 or new_s2 != s2:
                                 daten["matches_einzel"][g_name][idx][2] = new_s1
                                 daten["matches_einzel"][g_name][idx][3] = new_s2
-                                speichere_daten(daten);
+                                speichere_daten(daten)
                                 st.rerun()
 
-                if alle_spiele_gueltig and not ui_disabled:
+                if alle_spiele_gueltig and not grp_ui_disabled and not grp_beendet:
                     if "confirm_grp" not in st.session_state: st.session_state["confirm_grp"] = False
                     if not st.session_state["confirm_grp"]:
                         if st.button("✅ Alle Gruppen abschließen & KO-Runde generieren", type="primary"):
-                            st.session_state["confirm_grp"] = True;
+                            st.session_state["confirm_grp"] = True
                             st.rerun()
                     else:
                         st.warning("Bist du sicher? Die Gruppenphase wird hart abgeschlossen.")
@@ -396,14 +425,14 @@ with tab3:
 
                             daten["ko_einzel"]["runden"] = [runde_1]
                             daten["gruppen_beendet"] = True
-                            speichere_daten(daten);
+                            speichere_daten(daten)
                             st.rerun()
                         if c_n.button("❌ Abbrechen", key="grp_n"):
-                            st.session_state["confirm_grp"] = False;
+                            st.session_state["confirm_grp"] = False
                             st.rerun()
 
-            else:
-                st.success("Gruppenphase abgeschlossen!")
+            # --- KO-PHASE ---
+            if grp_beendet:
                 runden = daten["ko_einzel"]["runden"]
                 use_bo7 = daten.get("use_bo7_final", True)
 
@@ -432,6 +461,28 @@ with tab3:
                             else:
                                 runde_gueltig = False
 
+                            # --- DEV-MODE OVERRIDE DROPDOWNS ---
+                            if dev_mode and not ui_disabled:
+                                st.caption("🔧 Dev-Mode: Spieler manuell überschreiben")
+                                alle_spieler = ["Freilos"] + list(daten.get("spieler", {}).keys())
+                                if p1 not in alle_spieler: alle_spieler.append(p1)
+                                if p2 not in alle_spieler: alle_spieler.append(p2)
+
+                                c_dev1, c_dev2 = st.columns(2)
+                                with c_dev1:
+                                    neuer_p1 = st.selectbox("Spieler 1 ändern", alle_spieler,
+                                                            index=alle_spieler.index(p1), key=f"dev_p1_{r_idx}_{m_idx}")
+                                with c_dev2:
+                                    neuer_p2 = st.selectbox("Spieler 2 ändern", alle_spieler,
+                                                            index=alle_spieler.index(p2), key=f"dev_p2_{r_idx}_{m_idx}")
+
+                                if neuer_p1 != p1 or neuer_p2 != p2:
+                                    daten["ko_einzel"]["runden"][r_idx][m_idx][0] = neuer_p1
+                                    daten["ko_einzel"]["runden"][r_idx][m_idx][1] = neuer_p2
+                                    speichere_daten(daten)
+                                    st.rerun()
+                            # -----------------------------------
+
                             c1, c2, c3, c4, c5 = st.columns([3, 1, 1, 1, 3])
                             c1.write(f"**{p1_disp}**")
                             max_s = 7 if (is_final and use_bo7) else 5
@@ -446,9 +497,9 @@ with tab3:
                             c5.write(f"**{p2_disp}**")
 
                             if new_s1 != s1 or new_s2 != s2:
-                                daten["ko_einzel"]["runden"][r_idx][m_idx][2] = new_s1;
+                                daten["ko_einzel"]["runden"][r_idx][m_idx][2] = new_s1
                                 daten["ko_einzel"]["runden"][r_idx][m_idx][3] = new_s2
-                                speichere_daten(daten);
+                                speichere_daten(daten)
                                 st.rerun()
 
                 if len(runden) >= 2 and len(runden[-2]) == 2:
@@ -467,40 +518,63 @@ with tab3:
                     if h_gueltig and len(losers) == 2 and all(losers):
                         if not daten["ko_einzel"].get("spiel_um_platz_3"):
                             daten["ko_einzel"]["spiel_um_platz_3"] = [losers[0], losers[1], 0, 0]
-                            speichere_daten(daten);
+                            speichere_daten(daten)
                             st.rerun()
 
-                        p3_match = daten["ko_einzel"].get("spiel_um_platz_3")
-                        if p3_match and len(p3_match) >= 4:
-                            p3_bo7 = daten.get("use_bo7_final", True)
-                            p3_name = "🥉 Spiel um Platz 3 (Best-of-7)" if p3_bo7 else "🥉 Spiel um Platz 3 (Best-of-5)"
-                            with st.expander(p3_name, expanded=True):
-                                p1, p2, s1, s2 = p3_match
-                                p1_disp, p2_disp = p1, p2
-                                if is_valid_score(s1, s2, p3_bo7):
-                                    if s1 > s2:
-                                        p1_disp, p2_disp = f"🟢 {p1}", f"🔴 {p2}"
-                                    else:
-                                        p1_disp, p2_disp = f"🔴 {p1}", f"🟢 {p2}"
+                    p3_match = daten["ko_einzel"].get("spiel_um_platz_3")
+                    if p3_match and len(p3_match) >= 4:
+                        p3_bo7 = daten.get("use_bo7_final", True)
+                        p3_name = "🥉 Spiel um Platz 3 (Best-of-7)" if p3_bo7 else "🥉 Spiel um Platz 3 (Best-of-5)"
+                        with st.expander(p3_name, expanded=True):
+                            p1, p2, s1, s2 = p3_match
+                            p1_disp, p2_disp = p1, p2
+                            if is_valid_score(s1, s2, p3_bo7):
+                                if s1 > s2:
+                                    p1_disp, p2_disp = f"🟢 {p1}", f"🔴 {p2}"
+                                else:
+                                    p1_disp, p2_disp = f"🔴 {p1}", f"🟢 {p2}"
 
-                                c1, c2, c3, c4, c5 = st.columns([3, 1, 1, 1, 3])
-                                c1.write(f"**{p1_disp}**")
-                                max_p3 = 7 if p3_bo7 else 5
-                                is_p3_locked = bool(
-                                    not dev_mode and daten.get("spiel_um_platz_3_gesperrt", False)) or ui_disabled
-                                new_s1 = c2.number_input("Satz", min_value=0, max_value=max_p3, value=s1, key="p3_s1",
-                                                         label_visibility="collapsed", disabled=is_p3_locked)
-                                c3.markdown("<div style='text-align: center; font-weight: bold;'>:</div>",
-                                            unsafe_allow_html=True)
-                                new_s2 = c4.number_input("Satz", min_value=0, max_value=max_p3, value=s2, key="p3_s2",
-                                                         label_visibility="collapsed", disabled=is_p3_locked)
-                                c5.write(f"**{p2_disp}**")
+                            is_p3_locked = bool(
+                                not dev_mode and daten.get("spiel_um_platz_3_gesperrt", False)) or ui_disabled
 
-                                if new_s1 != s1 or new_s2 != s2:
-                                    daten["ko_einzel"]["spiel_um_platz_3"][2] = new_s1;
-                                    daten["ko_einzel"]["spiel_um_platz_3"][3] = new_s2
-                                    speichere_daten(daten);
+                            # --- DEV-MODE OVERRIDE DROPDOWNS (PLATZ 3) ---
+                            if dev_mode and not ui_disabled:
+                                st.caption("🔧 Dev-Mode: Spieler manuell überschreiben")
+                                alle_spieler = ["Freilos"] + list(daten.get("spieler", {}).keys())
+                                if p1 not in alle_spieler: alle_spieler.append(p1)
+                                if p2 not in alle_spieler: alle_spieler.append(p2)
+
+                                c_dev1, c_dev2 = st.columns(2)
+                                with c_dev1:
+                                    neuer_p1 = st.selectbox("Spieler 1 ändern", alle_spieler,
+                                                            index=alle_spieler.index(p1), key="dev_p3_p1")
+                                with c_dev2:
+                                    neuer_p2 = st.selectbox("Spieler 2 ändern", alle_spieler,
+                                                            index=alle_spieler.index(p2), key="dev_p3_p2")
+
+                                if neuer_p1 != p1 or neuer_p2 != p2:
+                                    daten["ko_einzel"]["spiel_um_platz_3"][0] = neuer_p1
+                                    daten["ko_einzel"]["spiel_um_platz_3"][1] = neuer_p2
+                                    speichere_daten(daten)
                                     st.rerun()
+                            # ---------------------------------------------
+
+                            c1, c2, c3, c4, c5 = st.columns([3, 1, 1, 1, 3])
+                            c1.write(f"**{p1_disp}**")
+                            max_p3 = 7 if p3_bo7 else 5
+                            new_s1 = c2.number_input("Satz", min_value=0, max_value=max_p3, value=s1, key="p3_s1",
+                                                     label_visibility="collapsed", disabled=is_p3_locked)
+                            c3.markdown("<div style='text-align: center; font-weight: bold;'>:</div>",
+                                        unsafe_allow_html=True)
+                            new_s2 = c4.number_input("Satz", min_value=0, max_value=max_p3, value=s2, key="p3_s2",
+                                                     label_visibility="collapsed", disabled=is_p3_locked)
+                            c5.write(f"**{p2_disp}**")
+
+                            if new_s1 != s1 or new_s2 != s2:
+                                daten["ko_einzel"]["spiel_um_platz_3"][2] = new_s1
+                                daten["ko_einzel"]["spiel_um_platz_3"][3] = new_s2
+                                speichere_daten(daten)
+                                st.rerun()
 
                 is_final_reached = len(runden[-1]) == 1
                 if not is_locked_round and runde_gueltig and not is_final_reached and not ui_disabled:
@@ -508,7 +582,7 @@ with tab3:
                     if ckey not in st.session_state: st.session_state[ckey] = False
                     if not st.session_state[ckey]:
                         if st.button("✅ Einzel Runde abschließen", type="primary", key=f"btn_{ckey}"):
-                            st.session_state[ckey] = True;
+                            st.session_state[ckey] = True
                             st.rerun()
                     else:
                         st.warning("Bist du sicher? Die Runde wird hart abgeschlossen.")
@@ -520,10 +594,10 @@ with tab3:
                             for i in range(0, len(winners), 2): next_round.append(
                                 [winners[i], winners[i + 1] if i + 1 < len(winners) else "Freilos", 0, 0])
                             daten["ko_einzel"]["runden"].append(next_round)
-                            speichere_daten(daten);
+                            speichere_daten(daten)
                             st.rerun()
                         if c_n.button("❌ Abbrechen", key=f"n_{ckey}"):
-                            st.session_state[ckey] = False;
+                            st.session_state[ckey] = False
                             st.rerun()
 
         # ==========================================
@@ -566,6 +640,45 @@ with tab3:
                     else:
                         all_valid = False
 
+                    # --- DEV-MODE OVERRIDE DROPDOWNS (DOPPEL) ---
+                    if dev_mode and not ui_disabled and not is_freilos:
+                        st.caption("🔧 Dev-Mode: Spieler im Doppel einzeln tauschen")
+                        alle_spieler = [""] + list(daten.get("spieler", {}).keys())
+
+                        def split_team(t_str):
+                            if t_str == "Freilos" or " & " not in t_str: return t_str, ""
+                            return t_str.split(" & ")[0], t_str.split(" & ")[1]
+
+                        t1_p1, t1_p2 = split_team(p1)
+                        t2_p1, t2_p2 = split_team(p2)
+
+                        for p in [t1_p1, t1_p2, t2_p1, t2_p2]:
+                            if p and p not in alle_spieler: alle_spieler.append(p)
+
+                        c_dev1, c_dev2, c_dev3, c_dev4 = st.columns(4)
+                        neuer_p1, neuer_p2 = p1, p2
+
+                        if p1 != "Freilos":
+                            with c_dev1: n_t1_p1 = st.selectbox("T1 P1", alle_spieler, index=alle_spieler.index(t1_p1),
+                                                                key=f"dev_{r_key}_{idx}_t1p1")
+                            with c_dev2: n_t1_p2 = st.selectbox("T1 P2", alle_spieler, index=alle_spieler.index(t1_p2),
+                                                                key=f"dev_{r_key}_{idx}_t1p2")
+                            neuer_p1 = f"{n_t1_p1} & {n_t1_p2}" if n_t1_p2 else n_t1_p1
+
+                        if p2 != "Freilos":
+                            with c_dev3: n_t2_p1 = st.selectbox("T2 P1", alle_spieler, index=alle_spieler.index(t2_p1),
+                                                                key=f"dev_{r_key}_{idx}_t2p1")
+                            with c_dev4: n_t2_p2 = st.selectbox("T2 P2", alle_spieler, index=alle_spieler.index(t2_p2),
+                                                                key=f"dev_{r_key}_{idx}_t2p2")
+                            neuer_p2 = f"{n_t2_p1} & {n_t2_p2}" if n_t2_p2 else n_t2_p1
+
+                        if neuer_p1 != p1 or neuer_p2 != p2:
+                            runde[idx][0] = neuer_p1
+                            runde[idx][1] = neuer_p2
+                            speichere_daten(daten)
+                            st.rerun()
+                    # ---------------------------------------------
+
                     c1, c2, c3, c4, c5 = st.columns([3, 1, 1, 1, 3])
                     c1.write(f"**{p1_disp}**")
                     ns1 = c2.number_input("Satz", 0, 5, s1, key=f"{r_key}_{idx}_1", label_visibility="collapsed",
@@ -586,7 +699,7 @@ with tab3:
                                     d_ko["gf"].pop()
                             elif len(d_ko["gf"]) == 2:
                                 d_ko["gf"].pop()
-                        speichere_daten(daten);
+                        speichere_daten(daten)
                         st.rerun()
                 return all_valid
 
@@ -626,10 +739,10 @@ with tab3:
             def do_phase1():
                 w1_w, w1_l = get_win_los(d_ko["w1"])
                 if baum == 8:
-                    d_ko["w2"] = [[w1_w[i], w1_w[i + 1], 0, 0] for i in range(0, 4, 2)];
+                    d_ko["w2"] = [[w1_w[i], w1_w[i + 1], 0, 0] for i in range(0, 4, 2)]
                     d_ko["l1"] = [[w1_l[i], w1_l[i + 1], 0, 0] for i in range(0, 4, 2)]
                 else:
-                    d_ko["w2"] = [[w1_w[i], w1_w[i + 1], 0, 0] for i in range(0, 8, 2)];
+                    d_ko["w2"] = [[w1_w[i], w1_w[i + 1], 0, 0] for i in range(0, 8, 2)]
                     d_ko["l1"] = [[w1_l[i], w1_l[i + 1], 0, 0] for i in range(0, 8, 2)]
                 d_ko["phase"] = 2;
                 speichere_daten(daten)
@@ -647,11 +760,11 @@ with tab3:
                     w2_w, w2_l = get_win_los(d_ko["w2"]);
                     l1_w, l1_l = get_win_los(d_ko["l1"])
                     if baum == 8:
-                        d_ko["wf"] = [[w2_w[0], w2_w[1], 0, 0]]; d_ko["l2"] = [[l1_w[i], w2_l[i], 0, 0] for i in
-                                                                               range(2)]
+                        d_ko["wf"] = [[w2_w[0], w2_w[1], 0, 0]];
+                        d_ko["l2"] = [[l1_w[i], w2_l[i], 0, 0] for i in range(2)]
                     else:
-                        d_ko["w3"] = [[w2_w[i], w2_w[i + 1], 0, 0] for i in range(0, 4, 2)]; d_ko["l2"] = [
-                            [l1_w[i], w2_l[i], 0, 0] for i in range(4)]
+                        d_ko["w3"] = [[w2_w[i], w2_w[i + 1], 0, 0] for i in range(0, 4, 2)]
+                        d_ko["l2"] = [[l1_w[i], w2_l[i], 0, 0] for i in range(4)]
                     d_ko["phase"] = 3;
                     speichere_daten(daten)
 
@@ -673,7 +786,7 @@ with tab3:
                         d_ko["l3"] = [[l2_w[0], l2_w[1], 0, 0]]
                     else:
                         w3_w, w3_l = get_win_los(d_ko["w3"]);
-                        d_ko["wf"] = [[w3_w[0], w3_w[1], 0, 0]];
+                        d_ko["wf"] = [[w3_w[0], w3_w[1], 0, 0]]
                         d_ko["l3"] = [[l2_w[i], l2_w[i + 1], 0, 0] for i in range(0, 4, 2)]
                     d_ko["phase"] = 4;
                     speichere_daten(daten)
@@ -713,7 +826,7 @@ with tab3:
 
                     def do_phase5_8():
                         wf_w, _ = get_win_los(d_ko["wf"]);
-                        lf_w, _ = get_win_los(d_ko["lf"]);
+                        lf_w, _ = get_win_los(d_ko["lf"])
                         d_ko["gf"] = [[wf_w[0], lf_w[0], 0, 0]];
                         d_ko["phase"] = 6;
                         speichere_daten(daten)
@@ -743,7 +856,7 @@ with tab3:
 
                     def do_phase6_16():
                         l5_w, _ = get_win_los(d_ko["l5"]);
-                        _, wf_l = get_win_los(d_ko["wf"]);
+                        _, wf_l = get_win_los(d_ko["wf"])
                         d_ko["lf"] = [[l5_w[0], wf_l[0], 0, 0]];
                         d_ko["phase"] = 7;
                         speichere_daten(daten)
@@ -758,7 +871,7 @@ with tab3:
 
                 def do_phase7_16():
                     wf_w, _ = get_win_los(d_ko["wf"]);
-                    lf_w, _ = get_win_los(d_ko["lf"]);
+                    lf_w, _ = get_win_los(d_ko["lf"])
                     d_ko["gf"] = [[wf_w[0], lf_w[0], 0, 0]];
                     d_ko["phase"] = 8;
                     speichere_daten(daten)
@@ -778,7 +891,6 @@ with tab3:
                 st.markdown("<h2 style='text-align: center;'>🏆 Siegerehrung 🏆</h2>", unsafe_allow_html=True)
 
 
-                # --- STATISTIK FUNKTIONEN ---
                 def get_einzel_stats(player):
                     if not player or player == "Noch offen": return {"saetze": 0, "diff": 0}
                     saetze, diff = 0, 0
@@ -788,28 +900,28 @@ with tab3:
                             p1, p2, s1, s2 = match
                             if p1 == player or p2 == player:
                                 if is_valid_score(s1, s2):
-                                    my_s = s1 if p1 == player else s2
+                                    my_s = s1 if p1 == player else s2;
                                     opp_s = s2 if p1 == player else s1
-                                    saetze += (my_s + opp_s)
+                                    saetze += (my_s + opp_s);
                                     diff += (my_s - opp_s)
                     for runde in daten["ko_einzel"]["runden"]:
                         for m in runde:
                             if len(m) < 4: continue
                             if m[0] == player or m[1] == player:
-                                p1, p2, s1, s2 = m
+                                p1, p2, s1, s2 = m;
                                 is_f = (len(runde) == 1)
                                 if is_valid_score(s1, s2, is_f and daten.get("use_bo7_final", True)):
-                                    my_s = s1 if p1 == player else s2
+                                    my_s = s1 if p1 == player else s2;
                                     opp_s = s2 if p1 == player else s1
-                                    saetze += (my_s + opp_s)
+                                    saetze += (my_s + opp_s);
                                     diff += (my_s - opp_s)
                     p3_match = daten["ko_einzel"].get("spiel_um_platz_3")
                     if p3_match and len(p3_match) >= 4 and (p3_match[0] == player or p3_match[1] == player):
                         p1, p2, s1, s2 = p3_match
                         if is_valid_score(s1, s2, daten.get("use_bo7_final", True)):
-                            my_s = s1 if p1 == player else s2
+                            my_s = s1 if p1 == player else s2;
                             opp_s = s2 if p1 == player else s1
-                            saetze += (my_s + opp_s)
+                            saetze += (my_s + opp_s);
                             diff += (my_s - opp_s)
                     return {"saetze": saetze, "diff": diff}
 
@@ -824,20 +936,18 @@ with tab3:
                                 p1, p2, s1, s2 = m
                                 if p1 == "Freilos" or p2 == "Freilos": continue
                                 if is_valid_score(s1, s2, False):
-                                    my_s = s1 if p1 == team else s2
+                                    my_s = s1 if p1 == team else s2;
                                     opp_s = s2 if p1 == team else s1
-                                    saetze += (my_s + opp_s)
+                                    saetze += (my_s + opp_s);
                                     diff += (my_s - opp_s)
                     return {"saetze": saetze, "diff": diff}
 
 
-                # --- VARIABLEN INIT ---
                 platz_1, platz_2, platz_3 = "", "", "Noch offen"
                 s1_stat, s2_stat, s3_stat = {"saetze": 0, "diff": 0}, {"saetze": 0, "diff": 0}, {"saetze": 0, "diff": 0}
                 d_platz_1, d_platz_2 = "", ""
                 d1_stat, d2_stat = {"saetze": 0, "diff": 0}, {"saetze": 0, "diff": 0}
 
-                # --- EINZEL PODEST ---
                 if einzel_fertig:
                     fin_match = daten["ko_einzel"]["runden"][-1][0]
                     platz_1 = fin_match[0] if fin_match[2] > fin_match[3] else fin_match[1]
@@ -877,14 +987,12 @@ with tab3:
                         st.metric(label=f"🥉 {platz_3}", value=f"{s3_stat['saetze']} Sätze",
                                   delta=f"{s3_stat['diff']:+d} Diff")
 
-                # --- DOPPEL PODEST ---
                 if doppel_fertig:
                     st.markdown("<hr>", unsafe_allow_html=True)
                     st.markdown("### 🤝 Doppel")
                     last_gf = gf[-1]
                     d_platz_1 = last_gf[0] if last_gf[2] > last_gf[3] else last_gf[1]
                     d_platz_2 = last_gf[1] if last_gf[2] > last_gf[3] else last_gf[0]
-
                     d1_stat = get_doppel_stats(d_platz_1)
                     d2_stat = get_doppel_stats(d_platz_2)
 
@@ -905,7 +1013,6 @@ with tab3:
                     with c2: st.metric(label=f"👑 {d_platz_1}", value=f"{d1_stat['saetze']} Sätze",
                                        delta=f"{d1_stat['diff']:+d} Diff")
 
-                # --- EXPORT REPORT ---
                 st.markdown("<br><br>", unsafe_allow_html=True)
                 report_txt = f"=== TURNIER BERICHT ===\n\n"
                 if einzel_fertig:
@@ -922,14 +1029,13 @@ with tab3:
                 st.download_button("📄 Turnier-Ergebnisse exportieren (.txt)", data=report_txt,
                                    file_name="turnier_ergebnisse.txt", mime="text/plain")
 
-                # --- TURNIER EINFRIEREN (WENN BEIDES FERTIG) ---
                 if einzel_fertig and doppel_fertig:
                     st.markdown("<br><br>", unsafe_allow_html=True)
                     if not is_readonly:
                         if not is_frozen:
                             if st.button("🔒 Turnierergebnisse offiziell einfrieren"):
                                 daten["turnier_eingefroren"] = True
-                                speichere_daten(daten);
+                                speichere_daten(daten)
                                 st.rerun()
                         else:
                             st.success("🔒 Das Turnier wurde offiziell beendet und eingefroren.")
@@ -947,17 +1053,16 @@ with tab3:
                 if "bestaetige_reset" not in st.session_state: st.session_state["bestaetige_reset"] = False
                 if not st.session_state["bestaetige_reset"]:
                     if st.button("⚠️ Turnier Reset (Alles auf Anfang)"):
-                        st.session_state["bestaetige_reset"] = True;
+                        st.session_state["bestaetige_reset"] = True
                         st.rerun()
                 else:
                     st.error("Wirklich alles zurücksetzen? (Erstellt ein Backup der aktuellen Daten)")
                     c_ja, c_nein = st.columns(2)
                     if c_ja.button("Ja, Backup erstellen & Reset", type="primary"):
                         st.session_state["bestaetige_reset"] = False
-                        if os.path.exists(DATEI):
-                            os.rename(DATEI, f"backup_{int(time.time())}.json")
-                        speichere_daten(lade_daten())  # Leere Daten laden
+                        if os.path.exists(DATEI): os.rename(DATEI, f"backup_{int(time.time())}.json")
+                        speichere_daten(lade_daten())
                         st.rerun()
                     if c_nein.button("Abbrechen"):
-                        st.session_state["bestaetige_reset"] = False;
+                        st.session_state["bestaetige_reset"] = False
                         st.rerun()

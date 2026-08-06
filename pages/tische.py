@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit_autorefresh import st_autorefresh
 import json
 import os
 import time
@@ -126,8 +127,7 @@ if is_readonly:
             st.markdown(f"<div class='big-table'>{t_name}<br>{m_name}</div>", unsafe_allow_html=True)
 
     st.info("🔄 Aktualisiert sich alle 10 Sekunden automatisch...")
-    time.sleep(10)
-    st.rerun()
+    st_autorefresh(interval=10000, key="live_update")
 
 # ==========================================
 # UI: TURNIERLEITUNG (Admin)
