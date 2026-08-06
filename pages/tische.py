@@ -160,8 +160,13 @@ else:
                 try:
                     p_teil = m_str.split(" | ")[-1]
                     p1, p2 = p_teil.split(" vs. ")
-                    busy.add(p1.strip())
-                    busy.add(p2.strip())
+
+                    # Wenn es ein Doppel ist, am "&" auftrennen
+                    for p in [p1.strip(), p2.strip()]:
+                        if " & " in p:
+                            busy.update([sp.strip() for sp in p.split(" & ")])
+                        else:
+                            busy.add(p)
                 except:
                     pass
         return busy
@@ -188,7 +193,17 @@ else:
                 try:
                     p_teil = m_str.split(" | ")[-1]
                     p1, p2 = p_teil.split(" vs. ")
-                    if p1.strip() not in busy_players and p2.strip() not in busy_players:
+
+                    # Die Spieler des potenziellen Matches aufsplitten (falls Doppel)
+                    match_players = set()
+                    for p in [p1.strip(), p2.strip()]:
+                        if " & " in p:
+                            match_players.update([sp.strip() for sp in p.split(" & ")])
+                        else:
+                            match_players.add(p)
+
+                    # Spiel nur erlauben, wenn KEIN EINZIGER der Spieler am Tisch busy ist
+                    if match_players.isdisjoint(busy_players):
                         erlaubte_spiele.append(m_str)
                 except:
                     erlaubte_spiele.append(m_str)
