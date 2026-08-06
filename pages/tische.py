@@ -31,6 +31,21 @@ if "tische" not in daten:
 
 is_readonly = st.query_params.get("view") == "readonly"
 
+# --- NEUER PASSWORT-SCHUTZ ---
+if not is_readonly:
+    if "admin_pw" not in st.session_state:
+        st.session_state["admin_pw"] = ""
+
+    eingabe = st.sidebar.text_input("🔒 Admin-Passwort", type="password", value=st.session_state["admin_pw"])
+    st.session_state["admin_pw"] = eingabe
+
+    if st.session_state["admin_pw"] != "tt2026":
+        st.error("Zugriff verweigert. Bitte Admin-Passwort in der Seitenleiste eingeben.")
+        st.info("Zuschauer? Hänge '?view=readonly' an die URL an.")
+        st.stop()
+
+
+# -----------------------------
 
 # --- ALLE OFFENEN SPIELE SUCHEN ---
 def hole_offene_spiele():
