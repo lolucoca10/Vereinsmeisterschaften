@@ -226,7 +226,11 @@ else:
         if st.button("🔄 Ansicht aktualisieren"): st.rerun()
     with c2:
         if st.button("🧹 Alle Tische auf 'Frei' setzen"):
-            for t in daten["tische"]: daten["tische"][t] = "Frei"
+            for t in daten["tische"]:
+                daten["tische"][t] = "Frei"
+                # Wir müssen Streamlit zwingen, den Cache der Dropdowns zu vergessen!
+                if f"sel_{t}" in st.session_state:
+                    del st.session_state[f"sel_{t}"]
             speichere_daten(daten)
             st.rerun()
 

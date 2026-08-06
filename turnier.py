@@ -413,15 +413,36 @@ with tab3:
                                               len(gruppen_ergebnisse[g]) > 0]
                             zweitplatzierte = [gruppen_ergebnisse[g][1] for g in daten["gruppen"].keys() if
                                                len(gruppen_ergebnisse[g]) > 1]
+
+                            # Mischen, um gleiche Gruppen-Duelle (A1 vs A2) im KO-Baum zu vermeiden
+                            random.shuffle(erstplatzierte)
+                            random.shuffle(zweitplatzierte)
+
                             alle_weiter = erstplatzierte + zweitplatzierte
                             ko_slots = get_power_of_two(len(alle_weiter))
-                            for i in range(ko_slots - len(alle_weiter)): zweitplatzierte.append("Freilos")
 
+                            while len(alle_weiter) < ko_slots:
+                                alle_weiter.append("Freilos")
+
+
+                            # Professionelle Setzliste (verhindert frühes Aufeinandertreffen der Favoriten)
+                            def generate_bracket(n):
+                                if n == 2: return [0, 1]
+                                prev = generate_bracket(n // 2)
+                                res = []
+                                for p in prev:
+                                    res.append(p)
+                                    res.append(n - 1 - p)
+                                return res
+
+
+                            setz_indices = generate_bracket(ko_slots)
                             runde_1 = []
-                            zweitplatzierte.reverse()
-                            for i in range(len(erstplatzierte)): runde_1.append(
-                                [erstplatzierte[i], zweitplatzierte[i], 0, 0])
-                            while len(runde_1) < (ko_slots // 2): runde_1.append(["Freilos", "Freilos", 0, 0])
+
+                            for i in range(0, ko_slots, 2):
+                                p1_idx = setz_indices[i]
+                                p2_idx = setz_indices[i + 1]
+                                runde_1.append([alle_weiter[p1_idx], alle_weiter[p2_idx], 0, 0])
 
                             daten["ko_einzel"]["runden"] = [runde_1]
                             daten["gruppen_beendet"] = True
@@ -449,8 +470,35 @@ with tab3:
                                                                                              0]; match = \
                             daten["ko_einzel"]["runden"][r_idx][m_idx]
                             p1, p2, s1, s2 = match
-                            if p1 == "Freilos" or p2 == "Freilos": st.info(
-                                f"🟢 **{p1 if p2 == 'Freilos' else p2}** (Freilos)"); continue
+
+                            # --- DEV-MODE OVERRIDE DROPDOWNS ---
+                            if dev_mode and not ui_disabled:
+                                st.caption("🔧 Dev-Mode: Spieler manuell überschreiben")
+                                alle_spieler = ["Freilos"] + list(daten.get("spieler", {}).keys())
+                                if p1 not in alle_spieler: alle_spieler.append(p1)
+                                if p2 not in alle_spieler: alle_spieler.append(p2)
+
+                                c_dev1, c_dev2 = st.columns(2)
+                                with c_dev1:
+                                    neuer_p1 = st.selectbox("Spieler 1 ändern", alle_spieler,
+                                                            index=alle_spieler.index(p1), key=f"dev_p1_{r_idx}_{m_idx}")
+                                with c_dev2:
+                                    neuer_p2 = st.selectbox("Spieler 2 ändern", alle_spieler,
+                                                            index=alle_spieler.index(p2), key=f"dev_p2_{r_idx}_{m_idx}")
+
+                                if neuer_p1 != p1 or neuer_p2 != p2:
+                                    daten["ko_einzel"]["runden"][r_idx][m_idx][0] = neuer_p1
+                                    daten["ko_einzel"]["runden"][r_idx][m_idx][1] = neuer_p2
+                                    speichere_daten(daten)
+                                    st.rerun()
+                            # -----------------------------------
+
+                            # Werte neu laden, falls sie im Dev-Mode gerade geändert wurden
+                            p1, p2 = match[0], match[1]
+
+                            if p1 == "Freilos" or p2 == "Freilos":
+                                st.info(f"🟢 **{p1 if p2 == 'Freilos' else p2}** (Freilos)")
+                                continue
 
                             p1_disp, p2_disp = p1, p2
                             if is_valid_score(s1, s2, is_final and use_bo7):
