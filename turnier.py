@@ -51,6 +51,15 @@ st.set_page_config(page_title="Turnier Manager", layout="wide")
 
 is_readonly = st.query_params.get("view") == "readonly"
 
+# --- NEUER PASSWORT-SCHUTZ ---
+if not is_readonly:
+    pwd = st.sidebar.text_input("🔒 Admin-Passwort", type="password")
+    if pwd != "tt2026":  # <-- Hier dein gewünschtes Passwort eintragen
+        st.error("Zugriff verweigert. Bitte Admin-Passwort in der Seitenleiste eingeben.")
+        st.info("Zuschauer? Hänge '?view=readonly' an die URL an.")
+        st.stop()
+# -----------------------------
+
 if is_readonly:
     st.markdown("""
         <style>
@@ -127,11 +136,11 @@ with tab1:
             with col1:
                 st.write(name)
             with col2:
-                info["einzel"] = st.checkbox("E", value=info["einzel"], key=f"e_{name}", label_visibility="collapsed")
+                info["einzel"] = st.checkbox("E", value=info["einzel"], key=f"e_{name}")
             with col3:
-                info["doppel"] = st.checkbox("D", value=info["doppel"], key=f"d_{name}", label_visibility="collapsed")
+                info["doppel"] = st.checkbox("D", value=info["doppel"], key=f"d_{name}")
             with col4:
-                info["kopf"] = st.checkbox("K", value=info["kopf"], key=f"k_{name}", label_visibility="collapsed")
+                info["kopf"] = st.checkbox("K", value=info["kopf"], key=f"k_{name}")
             with col5:
                 if st.button("❌", key=f"del_{name}"):
                     del daten["spieler"][name];
