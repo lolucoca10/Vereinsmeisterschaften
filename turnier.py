@@ -493,7 +493,7 @@ with tab3:
                                     st.rerun()
                             # -----------------------------------
 
-                            # Werte neu laden, falls sie im Dev-Mode gerade geändert wurden
+                            # Werte neu laden (falls Dev-Mode sie gerade geändert hat)
                             p1, p2 = match[0], match[1]
 
                             if p1 == "Freilos" or p2 == "Freilos":
@@ -508,28 +508,6 @@ with tab3:
                                     p1_disp, p2_disp = f"🔴 {p1}", f"🟢 {p2}"
                             else:
                                 runde_gueltig = False
-
-                            # --- DEV-MODE OVERRIDE DROPDOWNS ---
-                            if dev_mode and not ui_disabled:
-                                st.caption("🔧 Dev-Mode: Spieler manuell überschreiben")
-                                alle_spieler = ["Freilos"] + list(daten.get("spieler", {}).keys())
-                                if p1 not in alle_spieler: alle_spieler.append(p1)
-                                if p2 not in alle_spieler: alle_spieler.append(p2)
-
-                                c_dev1, c_dev2 = st.columns(2)
-                                with c_dev1:
-                                    neuer_p1 = st.selectbox("Spieler 1 ändern", alle_spieler,
-                                                            index=alle_spieler.index(p1), key=f"dev_p1_{r_idx}_{m_idx}")
-                                with c_dev2:
-                                    neuer_p2 = st.selectbox("Spieler 2 ändern", alle_spieler,
-                                                            index=alle_spieler.index(p2), key=f"dev_p2_{r_idx}_{m_idx}")
-
-                                if neuer_p1 != p1 or neuer_p2 != p2:
-                                    daten["ko_einzel"]["runden"][r_idx][m_idx][0] = neuer_p1
-                                    daten["ko_einzel"]["runden"][r_idx][m_idx][1] = neuer_p2
-                                    speichere_daten(daten)
-                                    st.rerun()
-                            # -----------------------------------
 
                             c1, c2, c3, c4, c5 = st.columns([3, 1, 1, 1, 3])
                             c1.write(f"**{p1_disp}**")
