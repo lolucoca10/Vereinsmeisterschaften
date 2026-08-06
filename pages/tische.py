@@ -221,16 +221,7 @@ else:
         st.rerun()
 
     st.markdown("---")
-    c1, c2 = st.columns([1, 3])
-    with c1:
-        if st.button("🔄 Ansicht aktualisieren"): st.rerun()
-    with c2:
-        if st.button("🧹 Alle Tische auf 'Frei' setzen"):
-            for t in daten["tische"]:
-                daten["tische"][t] = "Frei"
-                # Der ultimative Streamlit-Fix: Den Cache zwingend überschreiben!
-                st.session_state[f"sel_{t}"] = "Frei"
-            speichere_daten(daten)
-            st.rerun()
+    if st.button("🔄 Ansicht aktualisieren"):
+        st.rerun()
 
     st.write(f"**Verbleibende offene Spiele insgesamt:** {len(offene_spiele) - 1}")
